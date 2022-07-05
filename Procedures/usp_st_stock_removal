@@ -25,7 +25,7 @@ Input           :
 IndexDetails: 
 Tags            : if <c_message> contains "Error" then force logout (android)
 Note            :
-Service Call (Format): 
+Service Call (Format): Just a test
 Changes         : 
 :
 */
