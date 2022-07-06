@@ -14,7 +14,7 @@ CREATE OR REPLACE PROCEDURE "DBA"."usp_st_stock_removal"(
 result( "is_xml_string" xml ) 
 begin
   /* 
-Author          : Anup 
+Author          : Srihari
 Procedure       : usp_st_stock_removal
 SERVICE         : ws_st_stock_removal
 Date            : 20-10-2016 
