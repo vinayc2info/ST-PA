@@ -29,7 +29,7 @@ Service Call (Format): Just a test
 Changes         : 
 :
 */
-  ---common >>
+  -------common >>
   declare @ignore_urgent_color integer;
   declare @org_qty integer;
   declare @shift_qty integer;
