@@ -1,3 +1,5 @@
+/*Query to clear all the records from ST tables.*/
+
 delete from st_track_tray_move; 
 update st_track_det set n_complete=2 where n_complete in (0,1);
 update st_track_pick set n_reject_qty=n_qty where n_qty-(n_reject_qty+n_confirm_qty)>0;
