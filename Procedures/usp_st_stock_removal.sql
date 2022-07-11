@@ -1,4 +1,4 @@
-CREATE OR REPLACE PROCEDURE "DBA"."usp_st_stock_removal"( 
+CREATE PROCEDURE "DBA"."usp_st_stock_removal"( 
   -------------------------------------------------------------------------------------------------------------------------------
   in @gsBr char(6),
   in @devID char(200),
@@ -13,21 +13,16 @@ CREATE OR REPLACE PROCEDURE "DBA"."usp_st_stock_removal"(
   in @GodownCode char(6) ) 
 result( "is_xml_string" xml ) 
 begin
-  /* 
-Author          : vinay
-Procedure       : usp_st_stock_removal
-SERVICE         : ws_st_stock_removal
-Date            : 20-10-2016 
-Modified By     : Vinay Kumar S
-Ldate           : 30-04-2021 19:21
-Purpose         : Store Track TRANSACTION to TAB/DESKTOP
-Input           : 
-IndexDetails: 
-Tags            : if <c_message> contains "Error" then force logout (android)
-Note            :
-Service Call (Format): Just a test
-Changes         : 
-:
+  /*
+Author 		: Anup
+Procedure	: usp_st_stock_removal
+SERVICE		: ws_st_stock_removal
+Date 		: 25-09-2014
+--------------------------------------------------------------------------------------------------------------------------------
+Modified By                 Ldate               Index               ticketno                       Changes
+--------------------------------------------------------------------------------------------------------------------------------
+Pratheesh.P                 14-04-2022          cache_items         D16516                       CACHE LIST slow ISSUE
+--------------------------------------------------------------------------------------------------------------------------------
 */
   --common >>
   declare @ignore_urgent_color integer;
@@ -215,6 +210,25 @@ Changes         :
     "n_tran_exp_days" numeric(11,3) null,
     "n_godown_qty" numeric(11,3) null,
     "n_billed_batch" numeric null,
+    ) on commit delete rows;
+  declare local temporary table "st_track_det_tmp"(
+    "c_doc_no" char(25) not null,
+    "n_inout" numeric(1) not null,
+    "c_item_code" char(6) not null,
+    "c_batch_no" char(15) null,
+    "n_seq" numeric(11) not null default 0,
+    "n_qty" numeric(11,3) not null,
+    "n_bal_qty" numeric(11,3) not null,
+    "c_note" char(40) null,
+    "c_rack" char(6) null,
+    "c_rack_grp_code" char(6) null,
+    "c_stage_code" char(6) null,
+    "n_complete" numeric(1) not null default 0,
+    "c_reason_code" char(6) not null default 0,
+    "n_hold_flag" numeric(1) not null,
+    "c_tray_code" char(6) null,
+    "c_godown_code" char(6) null default '-',
+    "n_urgent" numeric(1) not null default 0,
     ) on commit delete rows;
   declare @LastRGSeq integer;
   declare @CurrentRGSeq integer;
@@ -2488,96 +2502,112 @@ select n_active  from st_track_module_mst where c_code = 'M00046';
         insert into "temp_rack_grp_list"( "c_rack_grp_code","c_stage_code","n_seq" ) values( @tmp,@StageCode,@Seq ) 
       end if
     end loop;
-    select "cache_list"."c_doc_no" as "c_doc_no",
-      "cache_list"."n_inout" as "n_inout",
-      "cache_list"."c_item_code" as "c_item_code",
-      "cache_list"."c_batch_no" as "c_batch_no",
-      "cache_list"."n_seq" as "n_seq",
-      "cache_list"."n_qty" as "n_qty",
-      "cache_list"."n_bal_qty" as "n_bal_qty",
-      "cache_list"."c_note" as "c_note",
-      "cache_list"."c_rack" as "c_rack",
-      "cache_list"."c_rack_grp_code" as "c_rack_grp_code",
-      "cache_list"."c_stage_code" as "c_stage_code",
-      "cache_list"."n_complete" as "n_complete",
-      "cache_list"."c_reason" as "c_reason",
-      "cache_list"."n_hold_flag" as "n_hold_flag",
-      "cache_list"."c_tray_code" as "c_tray_code",
-      "cache_list"."c_item_name" as "c_item_name",
-      "cache_list"."c_pack_name" as "c_pack_name",
-      "cache_list"."c_rack_name" as "c_rack_name",
-      "cache_list"."d_exp_dt" as "d_exp_dt",
-      "cache_list"."n_mrp" as "n_mrp",
-      "cache_list"."c_tray_name" as "c_tray_name",
-      "cache_list"."n_qty_per_box" as "n_qty_per_box",
-      "cache_list"."c_message" as "c_message",
-      "cache_list"."n_inner_pack_lot" as "n_inner_pack_lot",
-      "cache_list"."t_time",
-      "cache_list"."n_urgent" as "n_urgent",
-      "cache_list"."pack_indicator" as "pack_indicator"
-      from(select "st_track_det"."c_doc_no" as "c_doc_no",
-          "st_track_det"."n_inout" as "n_inout",
-          "item_mst"."c_code" as "c_item_code",
-          "isnull"("stock"."c_batch_no",'') as "c_batch_no",
-          "st_track_det"."n_seq" as "n_seq",
-          "TRIM"("STR"("TRUNCNUM"("st_track_det"."n_qty",3),10,0)) as "n_qty",
-          "TRIM"("STR"("TRUNCNUM"("st_track_det"."n_bal_qty",3),10,0)) as "n_bal_qty",
-          "st_track_det"."c_note" as "c_note",
-          "st_track_det"."c_rack" as "c_rack",
-          "st_track_det"."c_rack_grp_code" as "c_rack_grp_code",
-          "st_track_det"."c_stage_code" as "c_stage_code",
-          "st_track_det"."n_complete" as "n_complete",
-          "st_track_det"."c_reason_code" as "c_reason",
-          "st_track_det"."n_hold_flag" as "n_hold_flag",
-          "st_track_det"."c_tray_code" as "c_tray_code",
-          "item_mst"."c_name"+"uf_st_get_pack_name"("pack_mst"."c_name") as "c_item_name",
-          "pack_mst"."c_name" as "c_pack_name",
-          "rack_mst"."c_name" as "c_rack_name",
-          "isnull"("stock"."d_expiry_date",'') as "d_exp_dt",
-          "TRIM"("STR"("TRUNCNUM"("stock"."n_mrp",3),10,3)) as "n_mrp",
-          "st_tray_mst"."c_name" as "c_tray_name",
-          1 as "n_qty_per_box",
-          '' as "c_message",
-          0 as "n_inner_pack_lot",
-          "st_track_tray_move"."t_time" as "t_time",
-          "st_track_mst"."n_urgent" as "n_urgent",
-          "isnull"((select "max"("WIN_MEET_TYPE"."C_SH_NAME")
-            from "win_meet_type","win_meet_note"
-            where "WIN_MEET_TYPE"."C_CODE" = "win_meet_note"."C_NOTE_TYPE" and "c_note" is not null
-            and "win_meet_note"."c_win_name" = 'w_item_mst'
-            and "win_meet_note"."C_NOTE_type" in( 'NTI001','NTI002','NTI003','NTI004' ) 
-            and "trim"("win_meet_note"."C_KEY") = "st_track_det"."c_item_code"),'') as "pack_indicator"
-          from "st_track_det"
-            join "st_track_mst" on "st_track_det"."c_doc_no" = "st_track_mst"."c_doc_no"
-            and "st_track_det"."n_inout" = "st_track_mst"."n_inout"
-            join "item_mst" on "st_track_det"."c_item_code" = "item_mst"."c_code"
-            join "pack_mst" on "pack_mst"."c_code" = "item_mst"."c_pack_code"
-            join "rack_mst" on "rack_mst"."c_code" = "item_mst"."c_rack_code"
-            join "stock" on "stock"."c_item_code" = "st_track_det"."c_item_code"
-            and "stock"."c_batch_no" = "st_track_det"."c_batch_no"
-            join "temp_rack_grp_list" as "user_grp" on "st_track_det"."c_rack_grp_code" = "user_grp"."c_rack_grp_code"
-            left outer join "st_track_pick" on "st_track_det"."c_doc_no" = "st_track_pick"."c_doc_no"
-            and "st_track_det"."n_inout" = "st_track_pick"."n_inout"
-            and "st_track_det"."n_seq" = "st_track_pick"."n_org_seq"
-            and "st_track_det"."c_rack_grp_code" = "st_track_pick"."c_rack_grp_code"
-            and "st_track_det"."c_stage_code" = "st_track_pick"."c_stage_code"
-            and "st_track_det"."c_godown_code" = "st_track_pick"."c_godown_code"
-            left outer join "st_tray_mst" on "st_tray_mst"."c_code" = "st_track_det"."c_tray_code"
-            left outer join "st_track_tray_move" on "st_track_tray_move"."c_doc_no" = "st_track_det"."c_doc_no"
-            and "st_track_tray_move"."c_stage_code" = "st_track_det"."c_stage_code"
-            and "st_track_tray_move"."c_rack_grp_code" = "st_track_det"."c_rack_grp_code"
-            and "st_track_tray_move"."n_inout" = "st_track_det"."n_inout"
-          where "st_track_det"."n_complete" = 0
-          and "st_track_det"."c_godown_code" = @GodownCode
-          and(select "count"("st_track_det"."c_item_code") from "st_track_det"
-            where "st_track_det"."c_godown_code" = @GodownCode
-            and "st_track_det"."c_rack_grp_code" = @tmp
-            and "st_track_det"."n_complete" = 0) > 0
-          and "st_track_mst"."n_complete" = 0 and "st_track_det"."n_non_pick_flag" = 0
-          and "st_track_mst"."n_confirm" = 1
-          and "st_track_pick"."c_doc_no" is null) as "cache_list"
-      order by "cache_list"."t_time" asc,"cache_list"."n_urgent" desc,"cache_list"."t_time" asc,"cache_list"."c_doc_no" asc for xml raw,elements
-  when 'change_tray' then -----------------------------------------------------------------------
+    insert into "st_track_det_tmp"
+      select "st_track_det"."c_doc_no",
+        "st_track_det"."n_inout",
+        "st_track_det"."c_item_code",
+        "st_track_det"."c_batch_no",
+        "st_track_det"."n_seq",
+        "TRIM"("STR"("TRUNCNUM"("st_track_det"."n_qty",3),10,0)),
+        "TRIM"("STR"("TRUNCNUM"("st_track_det"."n_bal_qty",3),10,0)),
+        "st_track_det"."c_note",
+        "st_track_det"."c_rack",
+        "st_track_det"."c_rack_grp_code",
+        "st_track_det"."c_stage_code",
+        "st_track_det"."n_complete",
+        "st_track_det"."c_reason_code",
+        "st_track_det"."n_hold_flag",
+        "st_track_det"."c_tray_code",
+        "st_track_det"."c_godown_code",
+        "st_track_mst"."n_urgent"
+        from "st_track_det" with(readuncommitted)
+          join "st_track_mst" with(readuncommitted) on "st_track_det"."c_doc_no" = "st_track_mst"."c_doc_no"
+          and "st_track_det"."n_inout" = "st_track_mst"."n_inout"
+          join "temp_rack_grp_list" as "user_grp" on "st_track_det"."c_rack_grp_code" = "user_grp"."c_rack_grp_code"
+        where "st_track_det"."n_complete" = 0
+        and "st_track_det"."c_godown_code" = @GodownCode
+        and "st_track_mst"."n_complete" = 0 and "st_track_det"."n_non_pick_flag" = 0
+        and "st_track_mst"."n_confirm" = 1;
+    if exists(select "c_doc_no" from "st_track_det_tmp") then
+      select "cache_list"."c_doc_no" as "c_doc_no",
+        "cache_list"."n_inout" as "n_inout",
+        "cache_list"."c_item_code" as "c_item_code",
+        "cache_list"."c_batch_no" as "c_batch_no",
+        "cache_list"."n_seq" as "n_seq",
+        "cache_list"."n_qty" as "n_qty",
+        "cache_list"."n_bal_qty" as "n_bal_qty",
+        "cache_list"."c_note" as "c_note",
+        "cache_list"."c_rack" as "c_rack",
+        "cache_list"."c_rack_grp_code" as "c_rack_grp_code",
+        "cache_list"."c_stage_code" as "c_stage_code",
+        "cache_list"."n_complete" as "n_complete",
+        "cache_list"."c_reason" as "c_reason",
+        "cache_list"."n_hold_flag" as "n_hold_flag",
+        "cache_list"."c_tray_code" as "c_tray_code",
+        "cache_list"."c_item_name" as "c_item_name",
+        "cache_list"."c_pack_name" as "c_pack_name",
+        "cache_list"."c_rack_name" as "c_rack_name",
+        "cache_list"."d_exp_dt" as "d_exp_dt",
+        "cache_list"."n_mrp" as "n_mrp",
+        "cache_list"."c_tray_name" as "c_tray_name",
+        "cache_list"."n_qty_per_box" as "n_qty_per_box",
+        "cache_list"."c_message" as "c_message",
+        "cache_list"."n_inner_pack_lot" as "n_inner_pack_lot",
+        "cache_list"."t_time",
+        "cache_list"."n_urgent" as "n_urgent",
+        "cache_list"."pack_indicator" as "pack_indicator"
+        from(select "st_track_det_tmp"."c_doc_no" as "c_doc_no",
+            "st_track_det_tmp"."n_inout" as "n_inout",
+            "item_mst"."c_code" as "c_item_code",
+            "isnull"("stock"."c_batch_no",'') as "c_batch_no",
+            "st_track_det_tmp"."n_seq" as "n_seq",
+            "TRIM"("STR"("TRUNCNUM"("st_track_det_tmp"."n_qty",3),10,0)) as "n_qty",
+            "TRIM"("STR"("TRUNCNUM"("st_track_det_tmp"."n_bal_qty",3),10,0)) as "n_bal_qty",
+            "st_track_det_tmp"."c_note" as "c_note",
+            "st_track_det_tmp"."c_rack" as "c_rack",
+            "st_track_det_tmp"."c_rack_grp_code" as "c_rack_grp_code",
+            "st_track_det_tmp"."c_stage_code" as "c_stage_code",
+            "st_track_det_tmp"."n_complete" as "n_complete",
+            "st_track_det_tmp"."c_reason_code" as "c_reason",
+            "st_track_det_tmp"."n_hold_flag" as "n_hold_flag",
+            "st_track_det_tmp"."c_tray_code" as "c_tray_code",
+            "item_mst"."c_name"+"uf_st_get_pack_name"("pack_mst"."c_name") as "c_item_name",
+            "pack_mst"."c_name" as "c_pack_name",
+            "rack_mst"."c_name" as "c_rack_name",
+            "isnull"("stock"."d_expiry_date",'') as "d_exp_dt",
+            "TRIM"("STR"("TRUNCNUM"("stock"."n_mrp",3),10,3)) as "n_mrp",
+            "st_tray_mst"."c_name" as "c_tray_name",
+            1 as "n_qty_per_box",
+            '' as "c_message",
+            0 as "n_inner_pack_lot",
+            "st_track_tray_move"."t_time" as "t_time",
+            "st_track_det_tmp"."n_urgent" as "n_urgent",
+            "isnull"((select "max"("WIN_MEET_TYPE"."C_SH_NAME")
+              from "win_meet_type","win_meet_note"
+              where "WIN_MEET_TYPE"."C_CODE" = "win_meet_note"."C_NOTE_TYPE" and "c_note" is not null
+              and "win_meet_note"."c_win_name" = 'w_item_mst'
+              and "win_meet_note"."C_NOTE_type" in( 'NTI001','NTI002','NTI003','NTI004' ) 
+              and "trim"("win_meet_note"."C_KEY") = "st_track_det_tmp"."c_item_code"),'') as "pack_indicator"
+            from "st_track_det_tmp"
+              join "item_mst" with(readuncommitted) on "st_track_det_tmp"."c_item_code" = "item_mst"."c_code"
+              join "pack_mst" with(readuncommitted) on "pack_mst"."c_code" = "item_mst"."c_pack_code"
+              join "rack_mst" with(readuncommitted) on "rack_mst"."c_code" = "item_mst"."c_rack_code"
+              join "stock" with(readuncommitted) on "stock"."c_item_code" = "st_track_det_tmp"."c_item_code"
+              and "stock"."c_batch_no" = "st_track_det_tmp"."c_batch_no"
+              left outer join "st_track_pick" with(readuncommitted) on "st_track_det_tmp"."c_doc_no" = "st_track_pick"."c_doc_no"
+              and "st_track_det_tmp"."n_inout" = "st_track_pick"."n_inout"
+              and "st_track_det_tmp"."n_seq" = "st_track_pick"."n_org_seq"
+              and "st_track_det_tmp"."c_rack_grp_code" = "st_track_pick"."c_rack_grp_code"
+              and "st_track_det_tmp"."c_stage_code" = "st_track_pick"."c_stage_code"
+              and "st_track_det_tmp"."c_godown_code" = "st_track_pick"."c_godown_code"
+              left outer join "st_tray_mst" on "st_tray_mst"."c_code" = "st_track_det_tmp"."c_tray_code"
+              left outer join "st_track_tray_move" with(readuncommitted) on "st_track_tray_move"."c_doc_no" = "st_track_det_tmp"."c_doc_no"
+              and "st_track_tray_move"."c_stage_code" = "st_track_det_tmp"."c_stage_code"
+              and "st_track_tray_move"."c_rack_grp_code" = "st_track_det_tmp"."c_rack_grp_code"
+              and "st_track_tray_move"."n_inout" = "st_track_det_tmp"."n_inout"
+            where "st_track_pick"."c_doc_no" is null) as "cache_list"
+        order by "cache_list"."t_time" asc,"cache_list"."n_urgent" desc,"cache_list"."t_time" asc,"cache_list"."c_doc_no" asc for xml raw,elements
+    end if when 'change_tray' then -----------------------------------------------------------------------
     --@HdrData  : 1 OldTray~2 NewTray
     --1 OldTray
     select "Locate"(@HdrData,@ColSep) into @ColPos;
@@ -2880,5 +2910,3 @@ select n_active  from st_track_module_mst where c_code = 'M00046';
     return
   end case
 end;
-COMMIT WORK;
-GO
